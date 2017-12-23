@@ -1,0 +1,9 @@
+[repositories]
+  local
+  # FIXME: each project needs to update the following to use a centralised Nexus repository
+  maven-central
+  typesafe-ivy: http://repo.typesafe.com/typesafe/ivy-releases/, [organization]/[module]/(scala_[scalaVersion]/)(sbt_[sbtVersion]/)[revision]/[type]s/[artifact](-[classifier]).[ext]
+  sbt-bintray: https://dl.bintray.com/sbt/sbt-plugin-releases/, [organization]/[module]/(scala_[scalaVersion]/)(sbt_[sbtVersion]/)[revision]/[type]s/[artifact](-[classifier]).[ext]
+
+  lightbend-ivy: https://artifactory.us-east-1.bamgrid.net/com-lightbend-repo-commercial-releases/, [organization]/[module]/(scala_[scalaVersion]/)(sbt_[sbtVersion]/)[revision]/[type]s/[artifact](-[classifier]).[ext]
+  lightbend-mvn: https://artifactory.us-east-1.bamgrid.net/com-lightbend-repo-commercial-releases/
