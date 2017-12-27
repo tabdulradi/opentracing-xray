@@ -16,8 +16,8 @@
 
 package com.abdulradi.opentracing.xray.v1.model
 
-import java.nio.file.Path
 
+import com.abdulradi.opentracing.xray.utils.refined.Alphanumeric.path
 import com.abdulradi.opentracing.xray.utils.refined.Hex
 
 /**
@@ -50,11 +50,11 @@ final case class CauseObject(
   /**
     * The full path of the working directory when the exception occurred.
     */
-  workingDirectory: Path,
+  workingDirectory: path,
   /**
     * The array of paths to libraries or modules in use when the exception occurred.
     */
-  paths: Seq[Path],
+  paths: Seq[path],
   /**
     * The array of exception objects.
     */

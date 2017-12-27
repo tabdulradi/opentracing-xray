@@ -35,4 +35,7 @@ object Alphanumeric {
   // Keys must be alphanumeric in order to work with filters. Underscore is allowed. Other symbols and whitespace are not allowed.
   type PNonEmptyWithUnderscoreNoWhitespace = MatchesRegex[W.`"[0-9a-zA-Z_]+"`.T]
   type NonEmptyWithUnderscoreNoWhitespace = String Refined PNonEmptyWithUnderscoreNoWhitespace
+
+  type P = MatchesRegex[W.`"^(.*/)([^/]*)$"`.T]
+  type path = String Refined P
 }
