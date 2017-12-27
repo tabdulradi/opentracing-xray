@@ -13,7 +13,10 @@ lazy val `opentracing-xray` =
         atto,
         Jaeger.core,
         Refined.core,
-        circe
+        circe,
+        circeGeneric,
+        circeParser,
+        circeRefined
       )
     )
 

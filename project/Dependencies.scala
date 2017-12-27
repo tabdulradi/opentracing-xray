@@ -12,6 +12,9 @@ object Dependencies {
 
   val atto = "org.tpolecat" %% "atto-core"  % "0.6.1"
   val circe = "io.circe" %% "circe-core" % "0.9.0-M3"
+  val circeGeneric = "io.circe" %% "circe-generic" % "0.9.0-M3"
+  val circeParser = "io.circe" %% "circe-parser" % "0.9.0-M3"
+  val circeRefined = "io.circe" %% "circe-refined" % "0.9.0-M3"
 
   val mock: ModuleID = "org.scalamock" %% "scalamock-scalatest-support" % "3.6.0"
   val typesafeConfig: ModuleID = "com.typesafe" % "config" % "1.3.1"
