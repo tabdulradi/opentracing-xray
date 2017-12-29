@@ -15,6 +15,7 @@ lazy val `opentracing-xray` =
         Refined.core,
         circe,
         circeGeneric,
+        circeGenericExtras,
         circeParser,
         circeRefined
       )

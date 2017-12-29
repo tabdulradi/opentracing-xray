@@ -36,6 +36,6 @@ object Alphanumeric {
   type PNonEmptyWithUnderscoreNoWhitespace = MatchesRegex[W.`"[0-9a-zA-Z_]+"`.T]
   type NonEmptyWithUnderscoreNoWhitespace = String Refined PNonEmptyWithUnderscoreNoWhitespace
 
-  type P = MatchesRegex[W.`"^(.*/)([^/]*)$"`.T]
-  type path = String Refined P
+  type path = MatchesRegex[W.`"^(.*/)([^/]*)$"`.T]
+  type Path = String Refined path
 }
