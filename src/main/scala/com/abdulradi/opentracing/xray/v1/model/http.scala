@@ -16,6 +16,7 @@
 
 package com.abdulradi.opentracing.xray.v1.model
 
+import eu.timepit.refined.api.Refined
 import eu.timepit.refined.string.Url
 
 final case class SegmentHttp(
@@ -51,7 +52,7 @@ final case class CommonRequestFields(
   /**
     * The full URL of the request, compiled from the protocol, hostname, and path of the request.
     */
-  url: Option[Url],
+  url: Option[String Refined Url],
   /**
     * The user agent string from the requester's client.
     */
