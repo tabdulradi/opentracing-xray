@@ -5,7 +5,7 @@ import com.uber.jaeger.Span
 import io.circe.{Json, JsonObject}
 import scala.collection.JavaConverters._
 
-object SpanConverter {
+object SpanConverter extends (Span => Either[String, TopLevelTrace]) {
   import ConversionOps._
 
   /**
@@ -27,7 +27,7 @@ object SpanConverter {
     * @param span
     * @return
     */
-  def convert(span: Span): Either[String, TopLevelTrace] = for {
+  def apply(span: Span): Either[String, TopLevelTrace] = for {
     traceId <- TraceId.fromBaggage(span.context.baggageItems)
 
     id: SegmentId = SegmentId.fromOpenTracing(span.context.getSpanId)
