@@ -10,6 +10,7 @@ lazy val `opentracing-xray` =
     .enableProjectPlugin()
     .settings(
       libraryDependencies ++= Seq(
+        atto,
         Jaeger.core,
         Refined.core,
         circe
