@@ -48,8 +48,4 @@ class AgentBased[T: Encoder](agentAddress: InetAddress, agentPort: Int, converte
 object AgentBased {
   def apply[T: Encoder](agentAddress: String, agentPort: Int, converter: Span => Either[String, T]) =
     new AgentBased(InetAddress.getByName(agentAddress), agentPort, converter)
-
-//  TODO: Implement Encocder[TopLevelTrace]
-//  def default() =
-//    apply("localhost", 2000, SpanConverter)
 }
