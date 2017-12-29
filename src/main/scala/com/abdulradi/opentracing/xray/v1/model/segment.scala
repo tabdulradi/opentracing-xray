@@ -39,9 +39,7 @@ final case class Segment(
   /**
     * A subsegment ID you specify if the request originated from an instrumented application. The X-Ray SDK adds the parent subsegment ID to the tracing header for downstream HTTP calls.
     */
-  parentId: Option[Hex._16],
-  http: Option[SegmentHttp],
-  aws: SegmentAws
+  parentId: Option[Hex._16]
 ) extends TopLevelTrace
 
 /**
@@ -67,6 +65,7 @@ final case class CommonFields(
     * or: A 64-bit identifier for the subsegment, unique among segments in the same trace, in 16 hexadecimal digits.
     */
   id: SegmentId,
+
   /**
     * The logical name of the service that handled the request, up to 200 characters. For example, your application's name or domain name. Names can contain Unicode letters, numbers, and whitespace, and the following symbols: _, ., :, /, %, &, #, =, +, \, -, @
     * OR: The logical name of the subsegment. For downstream calls, name the subsegment after the resource or service called. For custom subsegments, name the subsegment after the code that it instruments (e.g., a function name).
@@ -74,11 +73,13 @@ final case class CommonFields(
     * A segment's name should match the domain name or logical name of the service that generates the segment. However, this is not enforced. Any application that has permission to PutTraceSegments can send segments with any name.
     */
   name: String,
+
   /**
     * number that is the time the segment was created, in floating point seconds in epoch time. For example, 1480615200.010 or 1.480615200010E9. Use as many decimal places as you need. Microsecond resolution is recommended when available.
     * or number that is the time the subsegment was created, in floating point seconds in epoch time, accurate to milliseconds. For example, 1480615200.010 or 1.480615200010E9.
     */
   startTime: Double,
+
   /**
     * number that is the time the segment was closed. For example, 1480615200.090 or 1.480615200090E9. Specify either an end_time or in_progress.
     * OR: number that is the time the subsegment was closed. For example, 1480615200.090 or 1.480615200090E9. Specify an end_time or in_progress.
@@ -86,23 +87,37 @@ final case class CommonFields(
     * if missing then in_progress = true. instead of specifying an end_time to record that a subsegment is started, but is not complete. Only send one complete subsegment, and one or zero in-progress subsegments, per downstream request.
     */
   endTime: Option[Double],
-  /*
+
+  /**
+    * http objects with information about the original HTTP request.
+    */
+  http: Option[SegmentHttp],
+
+  /**
+    * aws object with information about the AWS resource on which your application served the request
+    */
+  aws: Option[SegmentAws],
+
+  /**
    * error fields that indicate an error occurred and that include information about the exception that caused the error.
    */
   errorFields: Option[CommonErrorFields],
+
   /**
     * annotations object with key-value pairs that you want X-Ray to index for search.
     * Optional
     */
   annotations: Map[AnnotationKey, AnnotationValue],
+
   /**
     * metadata object with any additional data that you want to store in the segment.
     */
   metadata: Option[JsonObject],
+
   /**
     * array of subsegment objects.
     */
-  subsegments: Option[Subsegment]
+  subsegments: Seq[Subsegment]
 )
 
 final case class TopLevelFields(

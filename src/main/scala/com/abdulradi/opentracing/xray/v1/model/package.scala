@@ -17,6 +17,7 @@
 package com.abdulradi.opentracing.xray.v1
 
 import com.abdulradi.opentracing.xray.utils.refined.{Alphanumeric, Hex}
+import eu.timepit.refined.refineV
 
 package object model {
 
@@ -24,6 +25,13 @@ package object model {
     * Keys must be alphanumeric in order to work with filters. Underscore is allowed. Other symbols and whitespace are not allowed.
     */
   type AnnotationKey = Alphanumeric.NonEmptyWithUnderscoreNoWhitespace
+  object AnnotationKey {
+    private val InvalidCharRegex = "[^0-9a-zA-Z_]"
+
+    def escape(raw: String): AnnotationKey =
+      refineV[Alphanumeric.PNonEmptyWithUnderscoreNoWhitespace].unsafeFrom(raw.replaceAll(InvalidCharRegex, "_"))
+  }
 
   type SegmentId = Hex._16
+  object SegmentId
 }

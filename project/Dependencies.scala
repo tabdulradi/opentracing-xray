@@ -10,6 +10,7 @@ object Dependencies {
     val core = "com.uber.jaeger" % "jaeger-core" % "0.21.0"
   }
 
+  val atto = "org.tpolecat" %% "atto-core"  % "0.6.1"
   val circe = "io.circe" %% "circe-core" % "0.9.0-M3"
 
   val mock: ModuleID = "org.scalamock" %% "scalamock-scalatest-support" % "3.6.0"
