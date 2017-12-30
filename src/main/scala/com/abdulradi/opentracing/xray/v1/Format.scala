@@ -80,9 +80,9 @@ object Format {
   }
 
   private def merge(objects: JsonObject*)(keyValues: (String, Json)*) =
-    objects.foldLeft(JsonObject.fromMap(keyValues.toMap)) {
-      case (acc, obj) => (acc.toMap ++ obj.toMap).asJsonObject
-    }
+    objects.foldLeft(keyValues.toMap) {
+      case (acc, obj) => acc ++ obj.toMap
+    }.asJsonObject
 }
 
 
