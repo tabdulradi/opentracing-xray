@@ -28,7 +28,7 @@ object SpanConverter extends (Span => Either[String, TopLevelTrace]) {
     * @return
     */
   def apply(span: Span): Either[String, TopLevelTrace] = for {
-    traceId <- TraceId.fromBaggage(span.context.baggageItems)
+    traceId <- TraceId.getOrCreate(span)
 
     id: SegmentId = SegmentId.fromOpenTracing(span.context.getSpanId)
     name: String = span.getServiceName

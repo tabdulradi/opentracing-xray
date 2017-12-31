@@ -8,7 +8,7 @@ import com.abdulradi.opentracing.xray.utils.RichOptionOfEither._
 import scala.collection.JavaConverters._
 
 import com.abdulradi.opentracing.xray.utils.RichMap._
-import com.uber.jaeger.SpanContext
+import com.uber.jaeger.{Span, SpanContext}
 import eu.timepit.refined.refineV
 import io.opentracing.propagation.TextMap
 
@@ -51,15 +51,43 @@ object ConversionOps {
   }
 
   implicit class TraceIdCompanionConversionOps(val underlying: TraceId.type) extends AnyVal {
-    def fromBaggage(baggage: java.lang.Iterable[Entry[String, String]]): Either[String, TraceId] =
-      fromBaggage(baggage.asScala)
+    def getOrCreate(span: Span): Either[String, TraceId] =
+      for {
+        maybeExistingTraceId <- fromBaggage(span.context.baggageItems)
+        _ <- if (span.context.hasDummyTraceId) Left("TraceId set to dummy value, but no traceId nor timestamp in baggage") else Right(())
+      } yield maybeExistingTraceId.getOrElse(create(span))
 
-    def fromBaggage(baggage: Iterable[Entry[String, String]]): Either[String, TraceId] = for {
-      rawOriginalRequestTimestamp <- baggage.findOrLeft(BaggageKeys.OriginalRequestTimestamp, "OriginalRequestTimestamp is missing from baggage.")
-      originalRequestTimestamp <- refineV[Hex.P8](rawOriginalRequestTimestamp)
-      rawTracingIdentifier <- baggage.findOrLeft(BaggageKeys.TracingIdentifier, "TracingIdentifier is missing from baggage.")
-      tracingIdentifier <- refineV[Hex.P24](rawTracingIdentifier)
-    } yield TraceId(originalRequestTimestamp, tracingIdentifier)
+    private def create(span: Span): TraceId = {
+      val traceId = {
+        val hex = span.context().getTraceId.toHexString
+        val padding = "0" * (24 - hex.length)
+        refineV[Hex.P24].unsafeFrom(padding + hex)
+      }
+      val timestamp = {
+        val seconds = span.getStart / 1000 // microseconds to seconds
+        val hex = seconds.toHexString
+        val padding = "0" * (8 - hex.length) // kinda useless
+        // This is fine till 02/07/2106, after that timestamps won't fit XRay v1 model anyway.
+        refineV[Hex.P8].unsafeFrom(padding + hex)
+      }
+      TraceId(timestamp, traceId)
+    }
+
+    def fromBaggage(jBaggage: java.lang.Iterable[Entry[String, String]]): Either[String, Option[TraceId]] = {
+      val baggage = jBaggage.asScala
+      val mayebRawOriginalRequestTimestamp = baggage.find(BaggageKeys.OriginalRequestTimestamp)
+      val mayebRawTracingIdentifier = baggage.find(BaggageKeys.TracingIdentifier)
+      (mayebRawOriginalRequestTimestamp, mayebRawTracingIdentifier) match {
+        case (Some(rawOriginalRequestTimestamp), Some(rawTracingIdentifier)) =>
+          for {
+            originalRequestTimestamp <- refineV[Hex.P8](rawOriginalRequestTimestamp)
+            tracingIdentifier <- refineV[Hex.P24](rawTracingIdentifier)
+          } yield Some(TraceId(originalRequestTimestamp, tracingIdentifier))
+        case (None, None) => Right(None)
+        case (Some(a), None) => Left(s"Tracing Identifier is missing (timestamp was $a)")
+        case (None, Some(b)) => Left(s"OriginalRequestTimestamp missing (Tracing Id was $b)")
+      }
+    }
   }
 
   private object BaggageKeys {
@@ -98,12 +126,12 @@ object ConversionOps {
       headers.iterator.asScala.find(_.getKey == TracingHeader.Keys.HttpHeaderKey)
         .map(entry => fromHeaderString(entry.getValue)).toEitherOfOption
 
-    def fromSpanContext(spanContext: SpanContext): Either[String, TracingHeader] =
+    def fromSpanContext(spanContext: SpanContext): Either[String, Option[TracingHeader]] =
       for {
-        traceId <- TraceId.fromBaggage(spanContext.baggageItems())
+        maybeTraceId <- TraceId.fromBaggage(spanContext.baggageItems())
         parentSegmentId = SegmentId.fromOptional(spanContext.getParentId)
         samplingDecision = if (spanContext.isDebug) Some(1) else None
-      } yield TracingHeader(traceId, parentSegmentId, samplingDecision)
+      } yield maybeTraceId.map(TracingHeader(_, parentSegmentId, samplingDecision))
   }
 
   /* ********************************************
@@ -112,11 +140,8 @@ object ConversionOps {
   private val DummyTraceId: Long = 0 // Dummy values that indicated that real values are stored in Baggage instead. since Jaeger's types won't fit the value
 
   implicit class SpanContextConversionOps(val underlying: SpanContext) extends AnyVal {
-    def getNonDummyTraceId: Either[String, TraceId] =
-      underlying.getTraceId match {
-        case DummyTraceId => TraceId.fromBaggage(underlying.baggageItems)
-        case nonDummyTraceId => Left(s"SpanContext.TraceId is not dummy as expected ($nonDummyTraceId)")
-      }
+    def hasDummyTraceId: Boolean =
+      underlying.getTraceId == DummyTraceId
   }
 
   def spanContextFromTracingHeader(tracingHeader: TracingHeader, newSpanId: Long): SpanContext =

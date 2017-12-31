@@ -14,14 +14,25 @@ object XRayTextMapCodec extends Injector[TextMap] with Extractor[TextMap] {
     (carrier.put _).tupled(
       TracingHeader
         .fromSpanContext(spanContext)
-        .map(_.toHeader)
-        .fold(e => throw new IllegalStateException(e), identity)
+        .doubleMap(_.toHeader)
+        .horribleGet
     )
 
   override def extract(carrier: TextMap): SpanContext =
     TracingHeader
       .fromHeaders(carrier)
-      .map(_.map(tracingHeader => spanContextFromTracingHeader(tracingHeader, Random.nextLong())))
-      .fold(e => throw new IllegalStateException(e), identity)
-      .orNull
+      .doubleMap(spanContextFromTracingHeader(_, Random.nextLong()))
+      .horribleGet
+
+
+  implicit class EitherOfOptionOps[T](val underlying: Either[String, Option[T]]) extends AnyVal {
+    // Throws exceptions, returns null, and does all the horrible things for you!
+    def horribleGet()(implicit ev: Null <:< T): T =
+      underlying
+        .fold(e => throw new Exception(e), identity)
+        .orNull
+
+    // Poor man's monad transformer
+    def doubleMap[U](f: T => U): Either[String, Option[U]] = underlying.map(_.map(f))
+  }
 }
