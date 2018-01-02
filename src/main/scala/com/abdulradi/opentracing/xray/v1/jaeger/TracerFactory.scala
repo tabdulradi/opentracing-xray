@@ -1,27 +1,23 @@
 package com.abdulradi.opentracing.xray.v1.jaeger
 
 import com.abdulradi.opentracing.xray.v1.jaeger.senders.AgentBased
-import com.abdulradi.opentracing.xray.v1.model.TopLevelTrace
 import com.uber.jaeger.Tracer
 import com.uber.jaeger.metrics.{InMemoryStatsReporter, Metrics, StatsFactoryImpl}
 import com.uber.jaeger.reporters.RemoteReporter
 import com.uber.jaeger.samplers.ConstSampler
-import io.circe.Encoder
+import com.abdulradi.opentracing.xray.v1.Format._
 import io.opentracing.propagation.Format
 
-final case class TracerConfiguration(
-  serviceName: String,
-  flushInterval: Int,
-  maxQueueSize: Int,
-  agentAddress: String,
-  agentPort: Int
-)
-
 object TracerFactory {
+  final case class Configuration(
+    serviceName: String,
+    flushInterval: Int,
+    maxQueueSize: Int,
+    agentAddress: String,
+    agentPort: Int
+  )
 
-  implicit val encoder: Encoder[TopLevelTrace] = ??? // TODO: WIP
-
-  def apply(config: TracerConfiguration): Tracer =
+  def apply(config: Configuration): Tracer =
     new Tracer.Builder(
       config.serviceName,
       new RemoteReporter(

@@ -12,6 +12,8 @@ import com.uber.jaeger.{Span, SpanContext}
 import eu.timepit.refined.refineV
 import io.opentracing.propagation.TextMap
 
+import cats.syntax.either._ // Needed to cross-compile to Scala 2.11
+
 object ConversionOps {
 
   /* ********************************************
@@ -64,7 +66,7 @@ object ConversionOps {
         refineV[Hex.P24].unsafeFrom(padding + hex)
       }
       val timestamp = {
-        val seconds = span.getStart / 1000 // microseconds to seconds
+        val seconds = span.getStart / 1000000 // microseconds to seconds
         val hex = seconds.toHexString
         val padding = "0" * (8 - hex.length) // kinda useless
         // This is fine till 02/07/2106, after that timestamps won't fit XRay v1 model anyway.

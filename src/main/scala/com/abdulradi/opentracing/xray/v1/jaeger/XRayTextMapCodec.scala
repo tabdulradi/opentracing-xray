@@ -6,6 +6,7 @@ import com.abdulradi.opentracing.xray.v1.model.TracingHeader
 import com.uber.jaeger.SpanContext
 import com.uber.jaeger.propagation.{Extractor, Injector}
 import io.opentracing.propagation.TextMap
+import cats.syntax.either._ // Needed to cross-compile to Scala 2.11
 
 object XRayTextMapCodec extends Injector[TextMap] with Extractor[TextMap] {
   import ConversionOps._

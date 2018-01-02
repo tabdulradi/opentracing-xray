@@ -11,10 +11,8 @@ object Dependencies {
   }
 
   val atto = "org.tpolecat" %% "atto-core"  % "0.6.1"
-  val scalaTest = "org.scalatest" %% "scalatest" % "3.0.4" % "test"
+  val scalaTest = "org.scalatest" %% "scalatest" % "3.0.4"
   val circe = "io.circe" %% "circe-core" % "0.9.0-M3"
-  val circeGeneric = "io.circe" %% "circe-generic" % "0.9.0-M3"
-  val circeGenericExtras = "io.circe" %% "circe-generic-extras" % "0.9.0-M3"
   val circeParser = "io.circe" %% "circe-parser" % "0.9.0-M3"
   val circeRefined = "io.circe" %% "circe-refined" % "0.9.0-M3"
 
