@@ -11,6 +11,7 @@ lazy val `opentracing-xray` =
     .settings(
       libraryDependencies ++= Seq(
         atto,
+        scalaTest,
         Jaeger.core,
         Refined.core,
         circe,
