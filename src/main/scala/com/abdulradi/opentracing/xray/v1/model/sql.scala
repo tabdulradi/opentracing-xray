@@ -17,7 +17,7 @@
 package com.abdulradi.opentracing.xray.v1.model
 
 import eu.timepit.refined.api.Refined
-import eu.timepit.refined.string.Url
+import eu.timepit.refined.string.Uri
 
 final case class Sql(
   /**
@@ -27,7 +27,7 @@ final case class Sql(
   /**
     * For a database connection that uses a URL connection string, record the URL, excluding passwords.
     */
-  url: Option[String Refined Url],
+  url: Option[String Refined Uri],
   /**
     * The database query, with any user provided values removed or replaced by a placeholder.
     */
