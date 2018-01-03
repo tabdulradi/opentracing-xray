@@ -62,11 +62,13 @@ object Format {
   implicit val stackFrameEncoder: ObjectEncoder[StackFrame] = dummy // TODO
 
 
-  implicit val annotationValueEncoder: Encoder[AnnotationValue] = {
-    case StringAnnotation(value) => value.asJson
-    case IntAnnotation(value) => value.asJson
-    case DoubleAnnotation(value) => value.asJson
-    case BooleanAnnotation(value) => value.asJson
+  implicit val annotationValueEncoder: Encoder[AnnotationValue] = new Encoder[AnnotationValue]() {
+    def apply(value: AnnotationValue) = value match {
+      case StringAnnotation(value) => value.asJson
+      case IntAnnotation(value) => value.asJson
+      case DoubleAnnotation(value) => value.asJson
+      case BooleanAnnotation(value) => value.asJson
+    }
   }
 
   implicit val sqlEncoder: ObjectEncoder[Sql] = dummy // TODO
