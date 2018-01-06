@@ -21,7 +21,10 @@ object Format {
     "request" -> obj.request.asJson,
     "response" -> obj.response.asJson
   ))
-  implicit val subSegmentHttpEncoder: ObjectEncoder[SubsegmentHttp] = dummy // TODO
+  implicit val subSegmentHttpEncoder: ObjectEncoder[SubsegmentHttp] = ObjectEncoder.instance(obj => JsonObject(
+    "request" -> obj.request.asJson,
+    "response" -> obj.response.asJson
+  ))
   implicit val subSegmentRequestEncoder: ObjectEncoder[SubsegmentRequest] = ObjectEncoder.instance[SubsegmentRequest] { subsegmentRequest =>
     ("traced" -> subsegmentRequest.traced.asJson) +: subsegmentRequest.commonFields.asJsonObject
   }
@@ -39,8 +42,11 @@ object Format {
     )
   )
 
-  //Encoder.forProduct4("account_id", "ecs", "ec2", "elastic_beanstalk")(sa => (sa.accountId, sa.ecs, sa.ec2, sa.elasticBeanstalk))
-  implicit val ecsEncoder: ObjectEncoder[Ecs] = dummy // TODO
+  implicit val ecsEncoder: ObjectEncoder[Ecs] = ObjectEncoder.instance[Ecs](obj =>
+    JsonObject(
+      "container" -> obj.container.asJson
+    )
+  )
   implicit val ec2Encoder: ObjectEncoder[Ec2] = Encoder.forProduct2("instance_id", "availability_zone")(ec2 => (ec2.instanceId, ec2.availabilityZone))
   implicit val elasticBeanstalkEncoder: ObjectEncoder[ElasticBeanstalk] = Encoder.forProduct3("environment_name", "version_label", "deployment_id")(elb => (elb.environmentName, elb.versionLabel, elb.deploymentId))
   implicit val subSegmentAwsEncoder: ObjectEncoder[SubsegmentAws] = Encoder.forProduct6("operation", "account_id", "region", "request_id", "queue_url", "table_name")(sa => (sa.operation, sa.accountId, sa.region, sa.requestId, sa.queueUrl, sa.tableName))
@@ -56,11 +62,39 @@ object Format {
       "cause" -> obj.cause.asJson
     )
   )
-  implicit val causeEncoder: ObjectEncoder[Cause] = dummy // TODO
-  implicit val causeObjectEncoder: ObjectEncoder[CauseObject] = dummy // TODO
-  implicit val exceptionDetailsEncoder: ObjectEncoder[ExceptionDetails] = dummy // TODO
-  implicit val stackFrameEncoder: ObjectEncoder[StackFrame] = dummy // TODO
+  implicit val causeEncoder: Encoder[Cause] = new Encoder[Cause]() {
+    def apply(value: Cause) = value match {
+      case ExceptionId(value) => value.asJson
+    }
+  }
 
+  implicit val causeObjectEncoder: ObjectEncoder[CauseObject] = ObjectEncoder.instance[CauseObject](obj =>
+    JsonObject(
+      "working_directory" -> obj.workingDirectory.asJson,
+      "paths" -> obj.paths.asJson,
+      "exceptions" -> obj.exceptions.asJson
+    )
+  )
+  implicit val exceptionDetailsEncoder: ObjectEncoder[ExceptionDetails] = ObjectEncoder.instance[ExceptionDetails](obj =>
+    JsonObject(
+      "id" -> obj.id.asJson,
+      "message" -> obj.message.asJson,
+      "type" -> obj.`type`.asJson,
+      "remote" -> obj.remote.asJson,
+      "truncated" -> obj.truncated.asJson,
+      "skipped" -> obj.skipped.asJson,
+      "cause" -> obj.cause.asJson,
+      "stack" -> obj.stack.asJson
+    )
+  )
+
+  implicit val stackFrameEncoder: ObjectEncoder[StackFrame] = ObjectEncoder.instance[StackFrame](obj =>
+    JsonObject(
+      "path" -> obj.path.asJson,
+      "line" -> obj.line.asJson,
+      "label" -> obj.label.asJson
+    )
+  )
 
   implicit val annotationValueEncoder: Encoder[AnnotationValue] = new Encoder[AnnotationValue]() {
     def apply(value: AnnotationValue) = value match {
@@ -71,7 +105,18 @@ object Format {
     }
   }
 
-  implicit val sqlEncoder: ObjectEncoder[Sql] = dummy // TODO
+  implicit val sqlEncoder: ObjectEncoder[Sql] = ObjectEncoder.instance[Sql](obj =>
+    JsonObject(
+      "connection_string" -> obj.connectionString.asJson,
+      "url" -> obj.url.asJson,
+      "sanitized_query" -> obj.sanitized_query.asJson,
+      "database_type" -> obj.database_type.asJson,
+      "database_version" -> obj.database_version.asJson,
+      "driver_version" -> obj.driver_version.asJson,
+      "user" -> obj.user.asJson,
+      "preparation" -> obj.preparation.asJson
+      )
+  )
   implicit val preparationEncoder: Encoder[Preparation] = Encoder.instance[Preparation] {
     pr => pr.toString.toLowerCase().asJson
   }
@@ -90,12 +135,19 @@ object Format {
       "version" -> obj.version.asJson
     )
   )
-  implicit val subSegmentFieldsEncoder: ObjectEncoder[SubsegmentFields] = dummy // TODO
+  implicit val subSegmentFieldsEncoder: ObjectEncoder[SubsegmentFields] = ObjectEncoder.instance[SubsegmentFields](obj =>
+    ("namespace" -> obj.namespace.asJson) +:
+      ("precursor_ids" -> obj.precursorIds.asJson) +:
+      ("http" -> obj.http.asJson) +:
+      ("aws" -> obj.aws.asJson) +: obj.sql.asJsonObject
+  )
 
   implicit def mapWithStringRefinedKey[KP, V](implicit underlying: ObjectEncoder[Map[String, V]]): ObjectEncoder[Map[String Refined KP, V]] =
     underlying.contramapObject[Map[String Refined KP, V]](_.map { case (k, v) => k.value -> v }.toMap)
 
-  implicit val subSegmentEncoder: ObjectEncoder[Subsegment] = dummy // TODO
+  implicit val subSegmentEncoder: ObjectEncoder[Subsegment] = ObjectEncoder.instance[Subsegment](obj =>
+    merge(obj.commonFields.asJsonObject, obj.subsegmentFields.asJsonObject)()
+  )
 
   implicit val commonFieldsEncoder: ObjectEncoder[CommonFields] = ObjectEncoder.instance[CommonFields](obj =>
     ("id" -> obj.id.asJson) +:
@@ -141,9 +193,6 @@ object Format {
     objects.foldLeft(keyValues.toMap) {
       case (acc, obj) => acc ++ obj.toMap
     }.asJsonObject
-
-  // TODO: Remove me
-  private def dummy[T] = ObjectEncoder.instance[T](_ => JsonObject.empty)
 }
 
 
