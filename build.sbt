@@ -12,7 +12,7 @@ lazy val `opentracing-xray` =
       libraryDependencies ++= Seq(
         atto,
         Jaeger.core % Provided,
-        Refined.core % Provided,
+        Refined.core,
         circe,
         circeRefined,
         scalaTest % Test,
@@ -26,9 +26,10 @@ lazy val `opentracing-xray-fat` = project
   .settings(
     assemblyShadeRules in assembly := Seq(
       ShadeRule.rename("cats.**" -> "com.abdulradi.opentracing.xray.shaded_libs.cats.@1").inAll,
-      ShadeRule.rename("io.circe.**" -> "com.abdulradi.opentracing.xray.shaded_libs.cats.io.circe.@1").inAll,
+      ShadeRule.rename("io.circe.**" -> "com.abdulradi.opentracing.xray.shaded_libs.circe.@1").inAll,
       ShadeRule.rename("shapeless.**" -> "com.abdulradi.opentracing.xray.shaded_libs.shapeless.@1").inAll,
       ShadeRule.rename("atto.**" -> "com.abdulradi.opentracing.xray.shaded_libs.atto.@1").inAll,
+      ShadeRule.rename("eu.timepit.refined.**" -> "com.abdulradi.opentracing.xray.shaded_libs.refined.@1").inAll,
       ShadeRule.rename("machinist.**" -> "com.abdulradi.opentracing.xray.shaded_libs.machinist.@1").inAll,
       ShadeRule.rename("macrocompat.**" -> "com.abdulradi.opentracing.xray.shaded_libs.macrocompat.@1").inAll
     ),
@@ -40,7 +41,6 @@ lazy val `opentracing-xray-fat` = project
       case PathList("java", xs @ _*)  => MergeStrategy.discard
       case PathList("javax", xs @ _*)  => MergeStrategy.discard
       case PathList("scala", xs @ _*)  => MergeStrategy.discard
-      case PathList("eu", "timepit", "refined", xs @ _*)  => MergeStrategy.discard
       case PathList("rootdoc.txt")  => MergeStrategy.discard
       case _ => MergeStrategy.deduplicate
     },
@@ -50,6 +50,7 @@ lazy val `opentracing-xray-fat` = project
 
 lazy val `shadded-opentracing-xray` = project
   .settings(
+    libraryDependencies += Jaeger.core,
     packageBin in Compile := (assembly in (`opentracing-xray-fat`, Compile)).value
   )
 
