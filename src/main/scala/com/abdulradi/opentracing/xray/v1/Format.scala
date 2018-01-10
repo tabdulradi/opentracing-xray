@@ -136,7 +136,7 @@ object Format {
     )
   )
   implicit val subSegmentFieldsEncoder: ObjectEncoder[SubsegmentFields] = ObjectEncoder.instance[SubsegmentFields](obj =>
-    merge()(
+    JsonObject(
       "namespace" -> obj.namespace.asJson ,
       "precursor_ids" -> obj.precursorIds.asJson ,
       "http" -> obj.http.asJson,
