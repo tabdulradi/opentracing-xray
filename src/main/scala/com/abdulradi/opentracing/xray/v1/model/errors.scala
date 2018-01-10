@@ -59,7 +59,7 @@ final case class CauseObject(
     * The array of exception objects.
     */
   exceptions: Seq[ExceptionDetails]
-)
+) extends Cause
 
 case class ExceptionDetails(
   /**

@@ -62,19 +62,19 @@ object Format {
       "cause" -> obj.cause.asJson
     )
   )
-  implicit val causeEncoder: Encoder[Cause] = new Encoder[Cause]() {
-    def apply(value: Cause) = value match {
-      case ExceptionId(value) => value.asJson
-    }
+  implicit val causeEncoder: ObjectEncoder[Cause] = ObjectEncoder.instance[Cause] {
+      case id: ExceptionId =>
+        JsonObject(
+        "value" -> id.value.asJson
+        )
+      case obj: CauseObject =>
+        JsonObject(
+        "working_directory" -> obj.workingDirectory.asJson,
+        "paths" -> obj.paths.asJson,
+        "exceptions" -> obj.exceptions.asJson
+      )
   }
 
-  implicit val causeObjectEncoder: ObjectEncoder[CauseObject] = ObjectEncoder.instance[CauseObject](obj =>
-    JsonObject(
-      "working_directory" -> obj.workingDirectory.asJson,
-      "paths" -> obj.paths.asJson,
-      "exceptions" -> obj.exceptions.asJson
-    )
-  )
   implicit val exceptionDetailsEncoder: ObjectEncoder[ExceptionDetails] = ObjectEncoder.instance[ExceptionDetails](obj =>
     JsonObject(
       "id" -> obj.id.asJson,
@@ -136,10 +136,13 @@ object Format {
     )
   )
   implicit val subSegmentFieldsEncoder: ObjectEncoder[SubsegmentFields] = ObjectEncoder.instance[SubsegmentFields](obj =>
-    ("namespace" -> obj.namespace.asJson) +:
-      ("precursor_ids" -> obj.precursorIds.asJson) +:
-      ("http" -> obj.http.asJson) +:
-      ("aws" -> obj.aws.asJson) +: obj.sql.asJsonObject
+    merge()(
+      "namespace" -> obj.namespace.asJson ,
+      "precursor_ids" -> obj.precursorIds.asJson ,
+      "http" -> obj.http.asJson,
+      "aws" -> obj.aws.asJson,
+      "sql" -> obj.sql.asJson
+    )
   )
 
   implicit def mapWithStringRefinedKey[KP, V](implicit underlying: ObjectEncoder[Map[String, V]]): ObjectEncoder[Map[String Refined KP, V]] =
