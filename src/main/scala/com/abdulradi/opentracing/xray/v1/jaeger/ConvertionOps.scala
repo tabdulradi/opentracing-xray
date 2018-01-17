@@ -189,7 +189,7 @@ object Parsers {
   private val hex24 = hexStr.refined[Hex.P24]
 
   private val headerData = {
-    val keyValuePair = pairBy(stringOf1(letter), char('='), stringOf1(notChar(';')))
+    val keyValuePair = pairBy(stringOf1(notChar('=')), char('='), stringOf1(notChar(';')))
     sepBy(keyValuePair, char(';')).map(_.toMap)
   }
 
