@@ -11,8 +11,8 @@ import com.abdulradi.opentracing.xray.utils.RichMap._
 import com.uber.jaeger.{Span, SpanContext}
 import eu.timepit.refined.refineV
 import io.opentracing.propagation.TextMap
-
-import cats.syntax.either._ // Needed to cross-compile to Scala 2.11
+import cats.syntax.either._
+import com.uber.jaeger.samplers.Sampler // Needed to cross-compile to Scala 2.11
 
 object ConversionOps {
 
@@ -137,7 +137,7 @@ object ConversionOps {
       for {
         maybeTraceId <- TraceId.fromBaggage(spanContext.baggageItems())
         parentSegmentId = SegmentId.fromOptional(spanContext.getParentId)
-        samplingDecision = if (spanContext.isDebug) Some(1) else None
+        samplingDecision = Some(if (spanContext.isSampled) 1 else 0)
       } yield maybeTraceId.map(TracingHeader(_, parentSegmentId, samplingDecision))
   }
 
@@ -151,12 +151,16 @@ object ConversionOps {
       underlying.getTraceId == DummyTraceId
   }
 
-  def spanContextFromTracingHeader(tracingHeader: TracingHeader, newSpanId: Long): SpanContext =
+  def spanContextFromTracingHeader(tracingHeader: TracingHeader, sampler: Sampler, newSpanId: Long): SpanContext =
     tracingHeader.rootTraceId.toBaggage.foldLeft(new SpanContext(
-      DummyTraceId,
+      DummyTraceId, // rootTraceId won't fit here, instead it is stored in Baggage
       newSpanId,
       tracingHeader.parentSegmentId.toOpenTracing,
-      tracingHeader.samplingDecision.filter(_ == 1).getOrElse(0).toByte
+      tracingHeader
+        .samplingDecision
+        .map(x => Math.min(Math.max(x, 0), 1)) // Ensures value is 0 or 1 only
+        .getOrElse(if (sampler.sample("", newSpanId).isSampled) 1 else 0) // Samples if decision is not specified in headers
+        .toByte
     )){ case (spanContext, (key, value)) => spanContext.withBaggageItem(key, value) }
 
 }

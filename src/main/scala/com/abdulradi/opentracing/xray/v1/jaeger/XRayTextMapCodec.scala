@@ -6,12 +6,14 @@ import com.abdulradi.opentracing.xray.v1.model.TracingHeader
 import com.uber.jaeger.SpanContext
 import com.uber.jaeger.propagation.{Extractor, Injector}
 import io.opentracing.propagation.TextMap
+import com.uber.jaeger.samplers.Sampler
 import cats.syntax.either._ // Needed to cross-compile to Scala 2.11
 
 final case class OpenTracingXRayException(msg: String) extends Exception(msg)
 
-object XRayTextMapCodec extends Injector[TextMap] with Extractor[TextMap] {
+class XRayTextMapCodec(sampler: Sampler) extends Injector[TextMap] with Extractor[TextMap] {
   import ConversionOps._
+  import XRayTextMapCodec._
 
   override def inject(spanContext: SpanContext, carrier: TextMap): Unit =
     (carrier.put _).tupled(
@@ -24,10 +26,11 @@ object XRayTextMapCodec extends Injector[TextMap] with Extractor[TextMap] {
   override def extract(carrier: TextMap): SpanContext =
     TracingHeader
       .fromHeaders(carrier)
-      .doubleMap(spanContextFromTracingHeader(_, Random.nextLong()))
+      .doubleMap(spanContextFromTracingHeader(_, sampler, Random.nextLong()))
       .horribleGet
+}
 
-
+object XRayTextMapCodec {
   implicit class EitherOfOptionOps[T](val underlying: Either[String, Option[T]]) extends AnyVal {
     // Throws exceptions, returns null, and does all the horrible things for you!
     def horribleGet()(implicit ev: Null <:< T): T =

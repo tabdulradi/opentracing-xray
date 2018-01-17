@@ -17,6 +17,9 @@ object TracerFactory {
     agentPort: Int
   )
 
+  private val sampler = new ConstSampler(true) // TODO
+  private val codec = new XRayTextMapCodec(sampler)
+
   def apply(config: Configuration): Tracer =
     new Tracer.Builder(
       config.serviceName,
@@ -26,11 +29,11 @@ object TracerFactory {
         config.maxQueueSize,
         new Metrics(new StatsFactoryImpl(new InMemoryStatsReporter)) // TODO
       ),
-      new ConstSampler(true) // TODO
+      sampler
     )
-      .registerInjector(Format.Builtin.HTTP_HEADERS, XRayTextMapCodec)
-      .registerExtractor(Format.Builtin.HTTP_HEADERS, XRayTextMapCodec)
-      .registerInjector(Format.Builtin.TEXT_MAP, XRayTextMapCodec)
-      .registerExtractor(Format.Builtin.TEXT_MAP, XRayTextMapCodec)
+      .registerInjector(Format.Builtin.HTTP_HEADERS, codec)
+      .registerExtractor(Format.Builtin.HTTP_HEADERS, codec)
+      .registerInjector(Format.Builtin.TEXT_MAP, codec)
+      .registerExtractor(Format.Builtin.TEXT_MAP, codec)
       .build()
 }
