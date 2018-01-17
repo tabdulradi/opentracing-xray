@@ -8,6 +8,8 @@ import com.uber.jaeger.propagation.{Extractor, Injector}
 import io.opentracing.propagation.TextMap
 import cats.syntax.either._ // Needed to cross-compile to Scala 2.11
 
+final case class OpenTracingXRayException(msg: String) extends Exception(msg)
+
 object XRayTextMapCodec extends Injector[TextMap] with Extractor[TextMap] {
   import ConversionOps._
 
@@ -30,7 +32,7 @@ object XRayTextMapCodec extends Injector[TextMap] with Extractor[TextMap] {
     // Throws exceptions, returns null, and does all the horrible things for you!
     def horribleGet()(implicit ev: Null <:< T): T =
       underlying
-        .fold(e => throw new Exception(e), identity)
+        .fold(e => throw OpenTracingXRayException(e), identity)
         .orNull
 
     // Poor man's monad transformer

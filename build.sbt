@@ -11,7 +11,7 @@ lazy val `opentracing-xray` =
     .settings(
       libraryDependencies ++= Seq(
         atto,
-        Jaeger.core % Provided,
+        Jaeger.core,
         Refined.core,
         circe,
         circeRefined,
@@ -25,6 +25,7 @@ lazy val `opentracing-xray-fat` = project
   .dependsOn(`opentracing-xray`)
   .settings(
     assemblyShadeRules in assembly := Seq(
+      // TODO: Drop Jaeger!
       ShadeRule.rename("cats.**" -> "com.abdulradi.opentracing.xray.shaded_libs.cats.@1").inAll,
       ShadeRule.rename("io.circe.**" -> "com.abdulradi.opentracing.xray.shaded_libs.circe.@1").inAll,
       ShadeRule.rename("shapeless.**" -> "com.abdulradi.opentracing.xray.shaded_libs.shapeless.@1").inAll,

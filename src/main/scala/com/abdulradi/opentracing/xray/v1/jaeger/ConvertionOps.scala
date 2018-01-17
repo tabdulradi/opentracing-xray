@@ -178,21 +178,20 @@ object Parsers {
     }
   }
 
-  private val nonEmptyLetterStr = stringOf1(letter)
   private val hexStr = stringOf(hexDigit)
   private val hex8 = hexStr.refined[Hex.P8]
   private val hex16 = hexStr.refined[Hex.P16]
   private val hex24 = hexStr.refined[Hex.P24]
 
   private val headerData = {
-    val keyValuePair = pairBy(nonEmptyLetterStr, char('='), nonEmptyLetterStr)
+    val keyValuePair = pairBy(stringOf1(letter), char('='), stringOf1(notChar(';')))
     sepBy(keyValuePair, char(';')).map(_.toMap)
   }
 
   private val traceId: Parser[TraceId] =
     string("1-") ~> pairBy(hex8, char('-'), hex24).map(TraceId.tupled)
 
-  private def parse[T](parser: Parser[T])(input: String): Result[T] = parser.parse(input).either
+  private def parse[T](parser: Parser[T])(input: String): Result[T] = parser.parse(input).done.either
 
   val parseTracingHeader = parse(headerData) _
   val parseTraceId = parse(traceId) _
