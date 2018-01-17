@@ -56,8 +56,13 @@ object ConversionOps {
     def getOrCreate(span: Span): Either[String, TraceId] =
       for {
         maybeExistingTraceId <- fromBaggage(span.context.baggageItems)
-        _ <- if (span.context.hasDummyTraceId) Left("TraceId set to dummy value, but no traceId nor timestamp in baggage") else Right(())
-      } yield maybeExistingTraceId.getOrElse(create(span))
+        traceId <- maybeExistingTraceId.map(_.asRight).getOrElse(
+          if (span.context.hasDummyTraceId)
+            Left("TraceId set to dummy value, but no traceId nor timestamp in baggage")
+          else
+            Right(create(span))
+        )
+      } yield traceId
 
     private def create(span: Span): TraceId = {
       val traceId = {
