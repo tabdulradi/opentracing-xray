@@ -136,8 +136,10 @@ object ConversionOps {
       } yield TracingHeader(rootTraceId, parentSegmentID, samplingDecision)
 
     def fromHeaders(headers: TextMap): Either[String, Option[TracingHeader]]  =
-      headers.iterator.asScala.find(_.getKey == TracingHeader.Keys.HttpHeaderKey)
-        .map(entry => fromHeaderString(entry.getValue)).toEitherOfOption
+      headers.iterator.asScala
+        .find(entry => TracingHeader.Keys.HttpHeaderKey.equalsIgnoreCase(entry.getKey))
+        .map(entry => fromHeaderString(entry.getValue))
+        .toEitherOfOption
 
     // This method is a workaround a limitation ...
     // Scenario: A request has been received without a tracing header,
