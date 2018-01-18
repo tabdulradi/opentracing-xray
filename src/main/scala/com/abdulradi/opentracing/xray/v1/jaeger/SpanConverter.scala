@@ -7,7 +7,7 @@ import scala.collection.JavaConverters._
 
 import cats.syntax.either._ // Needed to cross-compile to Scala 2.11
 
-object SpanConverter extends (Span => Either[String, TopLevelTrace]) {
+private[jaeger] object SpanConverter extends (Span => Either[String, TopLevelTrace]) {
   import ConversionOps._
 
   /**
