@@ -21,11 +21,11 @@ object ConversionOps {
    * Segment Id
    *********************************************/
   implicit class SegmentIdConversionOps(val underlying: SegmentId) {
-    def toOpenTracing = java.lang.Long.parseUnsignedLong(underlying.value, 16)
+    private[ConversionOps] def toOpenTracing = java.lang.Long.parseUnsignedLong(underlying.value, 16)
   }
 
   implicit class OptionalSegmentIdConversionOps(val underlying: Option[SegmentId]) extends AnyVal {
-    def toOpenTracing: Long = underlying.map(_.toOpenTracing).getOrElse(0)
+    private[ConversionOps] def toOpenTracing: Long = underlying.map(_.toOpenTracing).getOrElse(0)
   }
 
   implicit class SegmentIdCompanionConversionOps(val underlying: SegmentId.type) extends AnyVal {
@@ -47,7 +47,7 @@ object ConversionOps {
     def toHeaderString: String =
       s"1-${underlying.originalRequestTime}-${underlying.identifier}"
 
-    def toBaggage: Map[String, String] = Map(
+    private[ConversionOps] def toBaggage: Map[String, String] = Map(
       BaggageKeys.OriginalRequestTimestamp -> underlying.originalRequestTime.value,
       BaggageKeys.TracingIdentifier -> underlying.identifier.value
     )
@@ -80,13 +80,13 @@ object ConversionOps {
       TraceId(timestamp, traceId)
     }
 
-    def generate(): TraceId =
+    private[ConversionOps] def generate(): TraceId =
       create(
         Random.nextLong(), // -ve is fine, .toHexString treats as unsigned (i.e overflows to fxxxxxx)
         System.currentTimeMillis() / 1000 // millis to seconds
       )
 
-    def fromBaggage(jBaggage: java.lang.Iterable[Entry[String, String]]): Either[String, Option[TraceId]] = {
+    private[ConversionOps] def fromBaggage(jBaggage: java.lang.Iterable[Entry[String, String]]): Either[String, Option[TraceId]] = {
       val baggage = jBaggage.asScala.to[List]
       val mayebRawOriginalRequestTimestamp = baggage.find(BaggageKeys.OriginalRequestTimestamp)
       val mayebRawTracingIdentifier = baggage.find(BaggageKeys.TracingIdentifier)
@@ -114,7 +114,7 @@ object ConversionOps {
    * Tracing Header
    *********************************************/
   implicit class TracingHeaderConversionOps(val underlying: TracingHeader) extends AnyVal {
-    def toHeaderString: String =
+    private[this] def toHeaderString: String =
       Map(
         TracingHeader.Keys.Root -> Some(underlying.rootTraceId.toHeaderString),
         TracingHeader.Keys.Parent -> underlying.parentSegmentId.map(_.value),
@@ -126,7 +126,7 @@ object ConversionOps {
   }
 
   implicit class TracingHeaderCompanionConversionOps(val underlying: TracingHeader.type) extends AnyVal {
-    def fromHeaderString(value: String) =
+    private[this] def fromHeaderString(value: String) =
       for {
         data <- Parsers.parseTracingHeader(value)
         rootTraceIdStr <- data.get(TracingHeader.Keys.Root).toRight("Root key is required")
@@ -135,7 +135,7 @@ object ConversionOps {
         samplingDecision <- data.get(TracingHeader.Keys.Sampled).map(Parsers.parseSamplingDecision).toEitherOfOption
       } yield TracingHeader(rootTraceId, parentSegmentID, samplingDecision)
 
-    def fromHeaders(headers: TextMap): Either[String, Option[TracingHeader]]  =
+    private[this] def fromHeaders(headers: TextMap): Either[String, Option[TracingHeader]] =
       headers.iterator.asScala
         .find(entry => TracingHeader.Keys.HttpHeaderKey.equalsIgnoreCase(entry.getKey))
         .map(entry => fromHeaderString(entry.getValue))
@@ -169,7 +169,8 @@ object ConversionOps {
   /* ********************************************
    * Span Context
    *********************************************/
-  private val DummyTraceId: Long = 0 // Dummy values that indicated that real values are stored in Baggage instead. since Jaeger's types won't fit the value
+  // Dummy values that indicated that real values are stored in Baggage instead. since Jaeger's types won't fit the value
+  private[this] val DummyTraceId: Long = 0
 
   implicit class SpanContextConversionOps(val underlying: SpanContext) extends AnyVal {
     def hasDummyTraceId: Boolean =
@@ -186,49 +187,50 @@ object ConversionOps {
         .map(x => Math.min(Math.max(x, 0), 1)) // Ensures value is 0 or 1 only
         .getOrElse(if (sampler.sample("", newSpanId).isSampled) 1 else 0) // Samples if decision is not specified in headers
         .toByte
-    )){ case (spanContext, (key, value)) => spanContext.withBaggageItem(key, value) }
+    )) { case (spanContext, (key, value)) => spanContext.withBaggageItem(key, value) }
 
-}
 
-object Parsers {
-  import atto._
-  import Atto._
-  import Parser.{Failure, State, Success, TResult}
-  import eu.timepit.refined.api.{Refined, Validate}
+  private[this] object Parsers {
+    import atto._
+    import Atto._
+    import Parser.{Failure, State, Success, TResult}
+    import eu.timepit.refined.api.{Refined, Validate}
 
-  type Result[T] = Either[String, T]
+    type Result[T] = Either[String, T]
 
-  implicit class RefinedOps[T](val parser: Parser[T]) extends AnyVal {
-    import eu.timepit.refined.refineV
+    implicit class RefinedOps[T](val parser: Parser[T]) extends AnyVal {
 
-    def refined[P](implicit ev: Validate[T, P]): Parser[T Refined P] = {
-      parser.flatMap(raw => new Parser[T Refined P] {
-        override def apply[R](st0: State, kf: Failure[R], ks: Success[Refined[T, P], R]): TResult[R] =
-          refineV(raw).fold(
-            e => kf(st0, List.empty, e), // FIXME: is empty stack correct here?
-            v => ks(st0, v)
-          )
-      })
+      import eu.timepit.refined.refineV
+
+      def refined[P](implicit ev: Validate[T, P]): Parser[T Refined P] = {
+        parser.flatMap(raw => new Parser[T Refined P] {
+          override def apply[R](st0: State, kf: Failure[R], ks: Success[Refined[T, P], R]): TResult[R] =
+            refineV(raw).fold(
+              e => kf(st0, List.empty, e), // FIXME: is empty stack correct here?
+              v => ks(st0, v)
+            )
+        })
+      }
     }
+
+    private val hexStr = stringOf(hexDigit)
+    private val hex8 = hexStr.refined[Hex.P8]
+    private val hex16 = hexStr.refined[Hex.P16]
+    private val hex24 = hexStr.refined[Hex.P24]
+
+    private val headerData = {
+      val keyValuePair = pairBy(stringOf1(notChar('=')), char('='), stringOf1(notChar(';')))
+      sepBy(keyValuePair, char(';')).map(_.toMap)
+    }
+
+    private val traceId: Parser[TraceId] =
+      string("1-") ~> pairBy(hex8, char('-'), hex24).map(TraceId.tupled)
+
+    private def parse[T](parser: Parser[T])(input: String): Result[T] = parser.parse(input).done.either
+
+    val parseTracingHeader = parse(headerData) _
+    val parseTraceId = parse(traceId) _
+    val parseSegmentId = parse[SegmentId](hex16) _
+    val parseSamplingDecision = parse(int) _
   }
-
-  private val hexStr = stringOf(hexDigit)
-  private val hex8 = hexStr.refined[Hex.P8]
-  private val hex16 = hexStr.refined[Hex.P16]
-  private val hex24 = hexStr.refined[Hex.P24]
-
-  private val headerData = {
-    val keyValuePair = pairBy(stringOf1(notChar('=')), char('='), stringOf1(notChar(';')))
-    sepBy(keyValuePair, char(';')).map(_.toMap)
-  }
-
-  private val traceId: Parser[TraceId] =
-    string("1-") ~> pairBy(hex8, char('-'), hex24).map(TraceId.tupled)
-
-  private def parse[T](parser: Parser[T])(input: String): Result[T] = parser.parse(input).done.either
-
-  val parseTracingHeader = parse(headerData) _
-  val parseTraceId = parse(traceId) _
-  val parseSegmentId = parse[SegmentId](hex16) _
-  val parseSamplingDecision = parse(int) _
 }
