@@ -1,17 +1,16 @@
 package com.abdulradi.opentracing.xray.v1
 
-import com.abdulradi.opentracing.xray.v1.model._
-import com.abdulradi.opentracing.xray.v1.Format._
-import com.abdulradi.opentracing.xray.utils.refined.Hex
 import com.abdulradi.opentracing.xray.utils.refined.Alphanumeric.Path
+import com.abdulradi.opentracing.xray.utils.refined.Hex
+import com.abdulradi.opentracing.xray.v1.Format._
+import com.abdulradi.opentracing.xray.v1.model._
 import eu.timepit.refined.api.Refined
-import eu.timepit.refined.string.Url
-import eu.timepit.refined.string.Uri
 import eu.timepit.refined.auto._
-import io.circe.{Json, Encoder, ObjectEncoder}
-import org.scalatest._
+import eu.timepit.refined.string.{Uri, Url}
+import io.circe.Json
 import io.circe.parser._
 import io.circe.syntax._
+import org.scalatest._
 
 
 class FormatTest extends FunSuite {
@@ -35,7 +34,7 @@ class FormatTest extends FunSuite {
     Some(32))
   val ec2 = Ec2(Some("i-075ad396f12bc325a"), Some("us-west-2c"))
   val ecs = Ecs(Some("79c796ed2a7f864f485c76f83f3165488097279d296a7c05bd5201a1c69b2920"))
-  val segmentAws = SegmentAws(Some("account_id"), Some(ecs), Some(ec2), elb)
+  val segmentAws = SegmentAws(None, Some(ecs), Some(ec2), elb)
 
   // Http
   val response = Response(Some(200), Some(-1))
@@ -102,7 +101,7 @@ class FormatTest extends FunSuite {
   val sqlStr =
     """
       |{
-      |    "connectionString" : "",
+      |    "connection_string" : "",
       |    "url": "jdbc:postgresql://aawijb5u25wdoy.cpamxznpdoq8.us-west-2.rds.amazonaws.com:5432/ebdb",
       |    "preparation": "statement",
       |    "database_type": "PostgreSQL",
@@ -160,8 +159,8 @@ class FormatTest extends FunSuite {
       |  }
       |}
     """.stripMargin
-  val jsonAws = segmentAws.asJson
-  val parsedAws = parse(awsStr).getOrElse(Json.Null)
+  val jsonAws = segmentAws.asJson.asObject.get
+  val parsedAws = ("account_id" -> Json.Null) +: parse(awsStr).right.get.asObject.get
   test("SegmentAws test") {
     assert(parsedAws === jsonAws)
   }
