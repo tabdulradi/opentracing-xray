@@ -19,26 +19,20 @@ class XRayTextMapCodec(sampler: Sampler) extends Injector[TextMap] with Extracto
     (carrier.put _).tupled(
       TracingHeader
         .fromSpanContext(spanContext)
-        .doubleMap(_.toHeader)
-        .horribleGet
+        .map(_.toHeader)
+        .orFail
     )
 
   override def extract(carrier: TextMap): SpanContext =
     TracingHeader
-      .fromHeaders(carrier)
-      .doubleMap(spanContextFromTracingHeader(_, sampler, Random.nextLong()))
-      .horribleGet
+      .fromHeadersOrCreateNew(carrier)
+      .map(spanContextFromTracingHeader(_, sampler, Random.nextLong()))
+      .orFail
 }
 
 object XRayTextMapCodec {
-  implicit class EitherOfOptionOps[T](val underlying: Either[String, Option[T]]) extends AnyVal {
-    // Throws exceptions, returns null, and does all the horrible things for you!
-    def horribleGet()(implicit ev: Null <:< T): T =
-      underlying
-        .fold(e => throw OpenTracingXRayException(e), identity)
-        .orNull
-
-    // Poor man's monad transformer
-    def doubleMap[U](f: T => U): Either[String, Option[U]] = underlying.map(_.map(f))
+  implicit class EitherOps[T](val underlying: Either[String, T]) extends AnyVal {
+    def orFail()(implicit ev: Null <:< T): T =
+      underlying.fold(e => throw OpenTracingXRayException(e), identity)
   }
 }

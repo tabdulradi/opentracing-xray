@@ -6,6 +6,7 @@ import com.abdulradi.opentracing.xray.utils.refined.Hex
 import com.abdulradi.opentracing.xray.v1.model.{SegmentId, TraceId, TracingHeader}
 import com.abdulradi.opentracing.xray.utils.RichOptionOfEither._
 import scala.collection.JavaConverters._
+import scala.util.Random
 
 import com.abdulradi.opentracing.xray.utils.RichMap._
 import com.uber.jaeger.{Span, SpanContext}
@@ -60,19 +61,18 @@ object ConversionOps {
           if (span.context.hasDummyTraceId)
             Left("TraceId set to dummy value, but no traceId nor timestamp in baggage")
           else
-            Right(create(span))
+            Right(create(span.context.getTraceId, span.getStart / 1000000)) // microseconds to seconds
         )
       } yield traceId
 
-    private def create(span: Span): TraceId = {
+    private[this] def create(openTracingTraceId: Long, originalRequestTimeSeconds: Long): TraceId = {
       val traceId = {
-        val hex = span.context().getTraceId.toHexString
+        val hex = openTracingTraceId.toHexString
         val padding = "0" * (24 - hex.length)
         refineV[Hex.P24].unsafeFrom(padding + hex)
       }
       val timestamp = {
-        val seconds = span.getStart / 1000000 // microseconds to seconds
-        val hex = seconds.toHexString
+        val hex = originalRequestTimeSeconds.toHexString
         val padding = "0" * (8 - hex.length) // kinda useless
         // This is fine till 02/07/2106, after that timestamps won't fit XRay v1 model anyway.
         refineV[Hex.P8].unsafeFrom(padding + hex)
@@ -80,8 +80,14 @@ object ConversionOps {
       TraceId(timestamp, traceId)
     }
 
+    def generate(): TraceId =
+      create(
+        Random.nextLong(), // -ve is fine, .toHexString treats as unsigned (i.e overflows to fxxxxxx)
+        System.currentTimeMillis() / 1000 // millis to seconds
+      )
+
     def fromBaggage(jBaggage: java.lang.Iterable[Entry[String, String]]): Either[String, Option[TraceId]] = {
-      val baggage = jBaggage.asScala
+      val baggage = jBaggage.asScala.to[List]
       val mayebRawOriginalRequestTimestamp = baggage.find(BaggageKeys.OriginalRequestTimestamp)
       val mayebRawTracingIdentifier = baggage.find(BaggageKeys.TracingIdentifier)
       (mayebRawOriginalRequestTimestamp, mayebRawTracingIdentifier) match {
@@ -133,12 +139,29 @@ object ConversionOps {
       headers.iterator.asScala.find(_.getKey == TracingHeader.Keys.HttpHeaderKey)
         .map(entry => fromHeaderString(entry.getValue)).toEitherOfOption
 
-    def fromSpanContext(spanContext: SpanContext): Either[String, Option[TracingHeader]] =
+    // This method is a workaround a limitation ...
+    // Scenario: A request has been received without a tracing header,
+    // this means we are running in a user facing service, with no Load balancer if front of it
+    // (or a behind a service that doesn't propagate tracing headers)
+    // Ideally we should report that there is no TracingHeader found, which is communicated as a `null` to Jaeger
+    // but this won't stop Jaeger from sampling the request, assigning a random opentracing traceId (Long)
+    // this will bite us back once the service starts calling other service, expecting us to generate a trace header for propagation
+    // return a None/null in this case yeild an error, Jaeger expects us to be able to generate a tracing header from only a trace context
+    // which is impossible, because XRay traceId is bigger that open tracing traceId, it includes extra fields like Initial-request-timestamp
+    // If choose to lie about timestamp (by generating one), it will be different every time, even if 2 requests are related and should have the exact same traceId
+    // So instead of going down this rabbit hole, we instead lie about tracing header, if we didn't fine one, we will create one ourselves
+    // now we can generate a timestamp once, then refer it to it multiple time, ensuring consistency,
+    def fromHeadersOrCreateNew(headers: TextMap): Either[String, TracingHeader] =
+      fromHeaders(headers).map(_.getOrElse(TracingHeader(TraceId.generate(), None, None)))
+
+    def fromSpanContext(spanContext: SpanContext): Either[String, TracingHeader] =
       for {
-        maybeTraceId <- TraceId.fromBaggage(spanContext.baggageItems())
+        maybeTraceIdFromBaggage <- TraceId.fromBaggage(spanContext.baggageItems())
+        // If no traceId in baggage, this it is a bug, see docs of `fromHeadersOrCreateNew` for context
+        traceId <- maybeTraceIdFromBaggage.fold(s"No TraceId found in baggage".asLeft[TraceId])(_.asRight)
         parentSegmentId = SegmentId.fromOptional(spanContext.getParentId)
         samplingDecision = Some(if (spanContext.isSampled) 1 else 0)
-      } yield maybeTraceId.map(TracingHeader(_, parentSegmentId, samplingDecision))
+      } yield TracingHeader(traceId, parentSegmentId, samplingDecision)
   }
 
   /* ********************************************
