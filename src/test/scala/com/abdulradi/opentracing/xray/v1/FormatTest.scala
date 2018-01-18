@@ -34,7 +34,7 @@ class FormatTest extends FunSuite {
   val elb = ElasticBeanstalk(Some("scorekeep"), Some("app-5a56-170119_190650-stage-170119_190650"),
     Some(32))
   val ec2 = Ec2(Some("i-075ad396f12bc325a"), Some("us-west-2c"))
-  val ecs = Ecs(Some("container-id"))
+  val ecs = Ecs(Some("79c796ed2a7f864f485c76f83f3165488097279d296a7c05bd5201a1c69b2920"))
   val segmentAws = SegmentAws(Some("account_id"), Some(ecs), Some(ec2), elb)
 
   // Http
@@ -155,8 +155,8 @@ class FormatTest extends FunSuite {
       |    "availability_zone": "us-west-2c",
       |    "instance_id": "i-075ad396f12bc325a"
       |  },
-      |  "xray": {
-      |    "sdk": "1.2.1 for Java"
+      |  "ecs": {
+      |    "container": "79c796ed2a7f864f485c76f83f3165488097279d296a7c05bd5201a1c69b2920"
       |  }
       |}
     """.stripMargin
