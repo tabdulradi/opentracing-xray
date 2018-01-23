@@ -1,6 +1,5 @@
 package com.abdulradi.opentracing.xray.v1
 
-import com.abdulradi.opentracing.xray.v1.jaeger.ConversionOps
 import com.abdulradi.opentracing.xray.v1.model._
 import eu.timepit.refined.api.Refined
 import io.circe._
@@ -165,7 +164,7 @@ object Format {
   )
 
   implicit val traceIdEncoder: Encoder[TraceId] = {
-    import ConversionOps.TraceIdConversionOps
+    import com.abdulradi.opentracing.xray.v1.CommonOps._
     Encoder.instance[TraceId](tid => Json.fromString(tid.toHeaderString))
   }
 

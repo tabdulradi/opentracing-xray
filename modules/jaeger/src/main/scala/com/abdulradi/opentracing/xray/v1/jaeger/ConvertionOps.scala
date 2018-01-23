@@ -44,9 +44,6 @@ object ConversionOps {
    * Trace Id
    *********************************************/
   implicit class TraceIdConversionOps(val underlying: TraceId) extends AnyVal {
-    def toHeaderString: String =
-      s"1-${underlying.originalRequestTime}-${underlying.identifier}"
-
     private[ConversionOps] def toBaggage: Map[String, String] = Map(
       BaggageKeys.OriginalRequestTimestamp -> underlying.originalRequestTime.value,
       BaggageKeys.TracingIdentifier -> underlying.identifier.value
@@ -114,6 +111,8 @@ object ConversionOps {
    * Tracing Header
    *********************************************/
   implicit class TracingHeaderConversionOps(val underlying: TracingHeader) extends AnyVal {
+    import com.abdulradi.opentracing.xray.v1.CommonOps._
+
     private[this] def toHeaderString: String =
       Map(
         TracingHeader.Keys.Root -> Some(underlying.rootTraceId.toHeaderString),

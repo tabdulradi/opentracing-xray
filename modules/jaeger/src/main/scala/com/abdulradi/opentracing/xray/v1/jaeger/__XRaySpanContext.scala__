@@ -1,0 +1,25 @@
+package com.abdulradi.opentracing.xray.v1.jaeger
+
+import com.abdulradi.opentracing.xray.v1.model.TracingHeader
+import com.uber.jaeger.SpanContext
+import com.uber.jaeger.samplers.Sampler
+import ConversionOps._
+
+object XRaySpanContext {
+  def apply(tracingHeader: TracingHeader, sampler: Sampler, newSpanId: Long): XRaySpanContext = {
+    val isSampled: Boolean =
+      tracingHeader
+        .samplingDecision
+        .map(_ >= 1)
+        .getOrElse(sampler.sample("", newSpanId).isSampled) // Samples if decision is not specified in headers
+
+    XRaySpanContext(tracingHeader, isSampled, newSpanId)
+  }
+}
+
+case class XRaySpanContext(header: TracingHeader, override val isSampled: Boolean, spanId: Long) extends SpanContext(
+  0, // traceId not used, won't fit header.rootTraceId.identifier
+  spanId,
+  header.parentSegmentId.map(_.toOpenTracing).getOrElse(0L),
+  if (isSampled) 1 else 0
+)
