@@ -1,9 +1,8 @@
 import ProjectPluginKeys._
+import com.abdulradi.Dependencies.{scalaTest, _}
 
-import com.abdulradi.Dependencies._
-
-scalaVersion in ThisBuild := "2.12.3"
-crossScalaVersions in ThisBuild := Seq("2.11.11", "2.12.3")
+scalaVersion in ThisBuild := "2.12.4"
+crossScalaVersions in ThisBuild := Seq("2.11.12", "2.12.4")
 
 lazy val `opentracing-xray-core` =
   (project in file("modules/core"))
@@ -37,8 +36,9 @@ lazy val `opentracing-xray-zipkin` =
       libraryDependencies ++= Seq(
         "io.zipkin.brave" % "brave" % "4.9.0",
         "io.zipkin.brave" % "brave-propagation-aws" % "4.9.0",
-        "io.opentracing.brave" % "brave-opentracing" % "0.22.1"
+        "io.opentracing.brave" % "brave-opentracing" % "0.22.1",
 //        "io.zipkin.aws" % "zipkin-reporter-xray-udp" % "0.8.5-SNAPSHOT"
+        scalaTest % Test
       )
     )
 

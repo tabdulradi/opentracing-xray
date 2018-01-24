@@ -12,8 +12,9 @@ import com.abdulradi.opentracing.xray.utils.RichMap._
 import com.uber.jaeger.{Span, SpanContext}
 import eu.timepit.refined.refineV
 import io.opentracing.propagation.TextMap
-import cats.syntax.either._
-import com.uber.jaeger.samplers.Sampler // Needed to cross-compile to Scala 2.11
+import cats.syntax.either._ // Needed to cross-compile to Scala 2.11
+import com.abdulradi.opentracing.xray.tracing.Propagation
+import com.uber.jaeger.samplers.Sampler
 
 object ConversionOps {
 
@@ -125,19 +126,10 @@ object ConversionOps {
   }
 
   implicit class TracingHeaderCompanionConversionOps(val underlying: TracingHeader.type) extends AnyVal {
-    private[this] def fromHeaderString(value: String) =
-      for {
-        data <- Parsers.parseTracingHeader(value)
-        rootTraceIdStr <- data.get(TracingHeader.Keys.Root).toRight("Root key is required")
-        rootTraceId <- Parsers.parseTraceId(rootTraceIdStr)
-        parentSegmentID <- data.get(TracingHeader.Keys.Parent).map(Parsers.parseSegmentId).toEitherOfOption
-        samplingDecision <- data.get(TracingHeader.Keys.Sampled).map(Parsers.parseSamplingDecision).toEitherOfOption
-      } yield TracingHeader(rootTraceId, parentSegmentID, samplingDecision)
-
     private[this] def fromHeaders(headers: TextMap): Either[String, Option[TracingHeader]] =
       headers.iterator.asScala
         .find(entry => TracingHeader.Keys.HttpHeaderKey.equalsIgnoreCase(entry.getKey))
-        .map(entry => fromHeaderString(entry.getValue))
+        .map(entry => Propagation.parseHeaderValue(entry.getValue))
         .toEitherOfOption
 
     // This method is a workaround a limitation ...
@@ -153,7 +145,7 @@ object ConversionOps {
     // So instead of going down this rabbit hole, we instead lie about tracing header, if we didn't fine one, we will create one ourselves
     // now we can generate a timestamp once, then refer it to it multiple time, ensuring consistency,
     def fromHeadersOrCreateNew(headers: TextMap): Either[String, TracingHeader] =
-      fromHeaders(headers).map(_.getOrElse(TracingHeader(TraceId.generate(), None, None)))
+      fromHeaders(headers).map(_.getOrElse(TracingHeader(TraceId.generate(), None, None, Map.empty)))
 
     def fromSpanContext(spanContext: SpanContext): Either[String, TracingHeader] =
       for {
@@ -161,8 +153,8 @@ object ConversionOps {
         // If no traceId in baggage, this it is a bug, see docs of `fromHeadersOrCreateNew` for context
         traceId <- maybeTraceIdFromBaggage.fold(s"No TraceId found in baggage".asLeft[TraceId])(_.asRight)
         parentSegmentId = SegmentId.fromOptional(spanContext.getParentId)
-        samplingDecision = Some(if (spanContext.isSampled) 1 else 0)
-      } yield TracingHeader(traceId, parentSegmentId, samplingDecision)
+        samplingDecision = Option(spanContext.isSampled)
+      } yield TracingHeader(traceId, parentSegmentId, samplingDecision, Map.empty)
   }
 
   /* ********************************************
@@ -183,11 +175,10 @@ object ConversionOps {
       tracingHeader.parentSegmentId.toOpenTracing,
       tracingHeader
         .samplingDecision
-        .map(x => Math.min(Math.max(x, 0), 1)) // Ensures value is 0 or 1 only
+        .map(sampled => if (sampled) 1 else 0)
         .getOrElse(if (sampler.sample("", newSpanId).isSampled) 1 else 0) // Samples if decision is not specified in headers
         .toByte
     )) { case (spanContext, (key, value)) => spanContext.withBaggageItem(key, value) }
-
 
   private[this] object Parsers {
     import atto._

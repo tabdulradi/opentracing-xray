@@ -45,6 +45,8 @@ private[zipkin] object SpanConverter extends (Span => Either[String, TopLevelTra
     val (bigTags, smallTags) = span.tags().asScala.toMap.partition { case (key, value) => key.length > 250 || value.length > 250 }
     val (bigAnnotations, smallAnnotation) = span.annotations().asScala.map(a => a.timestamp().toString -> a.value()).partition(_._2.length > 250)
 
+    val parentId = Option(span.parentId()).filterNot("0000000000000000".equals) // XRayExtractor sets this dummy value in case there is no parent
+
     val annotations: Map[AnnotationKey, AnnotationValue] =
       (smallTags ++ smallAnnotation).map {
         case (key, value) => AnnotationKey.escape(key) -> StringAnnotation(value)
@@ -84,7 +86,7 @@ private[zipkin] object SpanConverter extends (Span => Either[String, TopLevelTra
         fromNullable(span.localServiceName, "span.localServiceName == null").flatMap { name =>
           fromNullable(span.timestamp, "span.timestamp == null").flatMap { startTimeMicro =>
             val startTime = startTimeMicro.longValue() / 1000000.0D // microseconds to seconds
-            Option(span.parentId()).map(id => refineV[Hex.P16](id)).toEitherOfOption.map { parentId =>
+            parentId.map(id => refineV[Hex.P16](id)).toEitherOfOption.map { parentId =>
               Segment(
                 TopLevelFields(
                   CommonFields(id, name, startTime, endTime, http, aws, errorFields, annotations, metadata, subsegments),

@@ -12,12 +12,14 @@ package com.abdulradi.opentracing.xray.v1.model
 final case class TracingHeader(
   rootTraceId: TraceId,
   parentSegmentId: Option[SegmentId],
-  samplingDecision: Option[Int]
+  samplingDecision: Option[Boolean],
+  extra: Map[String, String] // Extra key value pairs found in header
 )
 
 object TracingHeader {
   object Keys {
     val HttpHeaderKey = "X-Amzn-Trace-Id"
+    val Self = "Self"
     val Root = "Root"
     val Parent = "Parent"
     val Sampled = "Sampled"
