@@ -27,7 +27,7 @@ object TracerBuilder {
             .serviceName(serviceName)
             .build()
         )
-        .propagationFactory(new XRayPropagationFactory)
+        .propagationFactory(new XRayPropagationFactory(sampler))
         .sampler(sampler)
         .spanReporter(new XRayAgentBasedReporter(agentHost, agentPort))
         .supportsJoin(false)
@@ -36,14 +36,14 @@ object TracerBuilder {
     )
 }
 
-class XRayPropagationFactory() extends Propagation.Factory {
+class XRayPropagationFactory(sampler: Sampler) extends Propagation.Factory {
   val underlying = AWSPropagation.FACTORY
 
   override def create[K](keyFactory: KeyFactory[K]): Propagation[K] =
-    new XRayPropagation(keyFactory, underlying.create(keyFactory))
+    new XRayPropagation(keyFactory, underlying.create(keyFactory), sampler)
 }
 
-class XRayPropagation[K](keyFactory: KeyFactory[K], underlying: Propagation[K]) extends Propagation[K] {
+class XRayPropagation[K](keyFactory: KeyFactory[K], underlying: Propagation[K], sampler: Sampler) extends Propagation[K] {
   override def injector[C](setter: Setter[C, K]): Injector[C] =
     new XRayInjector(underlying.injector[C] _, setter)
 
@@ -51,7 +51,7 @@ class XRayPropagation[K](keyFactory: KeyFactory[K], underlying: Propagation[K]) 
     underlying.keys()
 
   override def extractor[C](getter: Getter[C, K]): Extractor[C] =
-    new XRayExtractor(getter, keyFactory)
+    new XRayExtractor(getter, keyFactory, sampler)
 }
 
 class ManglingSetter[C, K](underlying: Setter[C, K]) extends Setter[C, K] {
@@ -66,22 +66,28 @@ class XRayInjector[C, K](underlying: Setter[C, K] => Injector[C], setter: Setter
       .inject(ctx, carrier)
 }
 
-class XRayExtractor[C, K](getter: Getter[C, K], keyFactory: KeyFactory[K]) extends Extractor[C] {
+class XRayExtractor[C, K](getter: Getter[C, K], keyFactory: KeyFactory[K], sampler: Sampler) extends Extractor[C] {
   override def extract(carrier: C): TraceContextOrSamplingFlags = {
     val header =
       xray.tracing.Propagation.parseOrGenerate(keyName => Option(getter.get(carrier, keyFactory.create(keyName))))
 
-    val (high, low) = (header.rootTraceId.originalRequestTime.value + header.rootTraceId.identifier.value).splitAt(16)
+    val (traceIdHigh, traceId) = {
+      import java.lang.Long.parseUnsignedLong
+      val (high, low) = (header.rootTraceId.originalRequestTime.value + header.rootTraceId.identifier.value).splitAt(16)
+      (parseUnsignedLong(high, 16), parseUnsignedLong(low, 16))
+    }
+
     val parentId = header.parentSegmentId.map(p => java.lang.Long.parseUnsignedLong(p.value, 16))
+    val samplingDecision = header.samplingDecision.getOrElse(sampler.isSampled(traceId))
 
     TraceContextOrSamplingFlags.create(
       TraceContext
         .newBuilder
-        .traceIdHigh(java.lang.Long.parseUnsignedLong(high, 16))
-        .traceId(java.lang.Long.parseUnsignedLong(low, 16))
+        .traceIdHigh(traceIdHigh)
+        .traceId(traceId)
         .spanId(parentId.getOrElse(0)) // 0 is a special dummy value, filtered out by SpanConverter
         .shared(false) // Spans are never shared across multiple hosts, simply because tracing header doesn't include spanId
-        .sampled(header.samplingDecision.map(s => new Boolean(s)).orNull)
+        .sampled(samplingDecision)
 //        .extra(java.util.Collections.singletonList(new AWSPropagation.Extra)) // TODO: AWSPropagation.Extra is private
         .build
     )
