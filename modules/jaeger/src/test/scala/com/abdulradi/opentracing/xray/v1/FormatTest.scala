@@ -43,8 +43,8 @@ class FormatTest extends FunSuite {
   val crf = CommonRequestFields(Some("POST"), Some(url), Some(userAgent), Some("78.255.233.48"))
   val subSegmentRequest = SubsegmentRequest(crf, Some(true))
   val segmentRequest = SegmentRequest(crf, Some(true))
-  val subSegmentHttp = SubsegmentHttp(Some(subSegmentRequest), Some(response))
-  val segmentHttp = SegmentHttp(Some(segmentRequest), Some(response))
+  val subSegmentHttp = DownstreamHttp(Some(subSegmentRequest), Some(response))
+  val segmentHttp = ServedHttp(Some(segmentRequest), Some(response))
 
   // Sql
   val conUri: String Refined Uri = "jdbc:postgresql://aawijb5u25wdoy.cpamxznpdoq8.us-west-2.rds.amazonaws.com:5432/ebdb"
@@ -69,7 +69,7 @@ class FormatTest extends FunSuite {
   val service = Service("version")
   val segmentId: SegmentId = "70de5b6f19ff9a0a"
   val subsegmentFields = SubsegmentFields(Some(Namespace.Aws), Seq(segmentId), Some(subSegmentHttp),
-    subSegmentAws, sql)
+    Some(subSegmentAws), Some(sql))
 
   val annotations = Map(
     ("customer_category" -> 124),

@@ -1,6 +1,5 @@
 package com.abdulradi.opentracing.xray.v1.zipkin
 
-import java.lang.Boolean
 import java.util
 
 import cats.syntax.either._
@@ -17,7 +16,7 @@ import zipkin2.reporter.Reporter
 import zipkin2.{Endpoint, Span}
 
 object TracerBuilder {
-  def apply(serviceName: String, agentHost: String, agentPort: Int, sampler: Sampler): BraveTracer.Builder =
+  def apply(serviceName: String, agentHost: String, agentPort: Int, sampler: Sampler, spanConverter: ZipkinSpanConverter): BraveTracer.Builder =
     BraveTracer.newBuilder(
       Tracing
         .newBuilder()
@@ -29,7 +28,7 @@ object TracerBuilder {
         )
         .propagationFactory(new XRayPropagationFactory(sampler))
         .sampler(sampler)
-        .spanReporter(new XRayAgentBasedReporter(agentHost, agentPort))
+        .spanReporter(new XRayAgentBasedReporter(agentHost, agentPort, spanConverter))
         .supportsJoin(false)
         .traceId128Bit(true)
         .build()
@@ -94,10 +93,10 @@ class XRayExtractor[C, K](getter: Getter[C, K], keyFactory: KeyFactory[K], sampl
   }
 }
 
-class XRayAgentBasedReporter(agentHost: String, agentPort: Int) extends Reporter[Span] {
+class XRayAgentBasedReporter(agentHost: String, agentPort: Int, spanConverter: ZipkinSpanConverter) extends Reporter[Span] {
   private val sender = AgentBasedSender(agentHost, agentPort) // FIXME: Api doesn't allow closing the socket
   import com.abdulradi.opentracing.xray.v1.Format._
 
   override def report(span: Span): Unit =
-    SpanConverter(span).map(t => sender.send(t))
+    spanConverter(span).map(t => sender.send(t))
 }

@@ -19,12 +19,18 @@ package com.abdulradi.opentracing.xray.v1.model
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.string.Url
 
-final case class SegmentHttp(
+/**
+  * HTTP block to record details about an HTTP request that your application served (in a segment)
+  */
+final case class ServedHttp(
   request: Option[SegmentRequest],
   response: Option[Response]
 )
 
-final case class SubsegmentHttp(
+/**
+  * HTTP block to record details about an HTTP request that your application made to a downstream HTTP API (in a subsegment)
+  */
+final case class DownstreamHttp(
   request: Option[SubsegmentRequest],
   response: Option[Response]
 )

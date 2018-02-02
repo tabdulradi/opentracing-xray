@@ -39,7 +39,16 @@ final case class Segment(
   /**
     * A subsegment ID you specify if the request originated from an instrumented application. The X-Ray SDK adds the parent subsegment ID to the tracing header for downstream HTTP calls.
     */
-  parentId: Option[Hex._16]
+  parentId: Option[Hex._16],
+
+  /**
+    * Information about the original HTTP request.
+    */
+  http: Option[ServedHttp],
+  /**
+    * aws object with information about the AWS resource on which your application served the request
+    */
+  aws: Option[SegmentAws]
 ) extends TopLevelTrace
 
 /**
@@ -89,16 +98,6 @@ final case class CommonFields(
   endTime: Option[Double],
 
   /**
-    * http objects with information about the original HTTP request.
-    */
-  http: Option[SegmentHttp],
-
-  /**
-    * aws object with information about the AWS resource on which your application served the request
-    */
-  aws: Option[SegmentAws],
-
-  /**
    * error fields that indicate an error occurred and that include information about the exception that caused the error.
    */
   errorFields: Option[CommonErrorFields],
@@ -140,15 +139,15 @@ final case class SubsegmentFields(
   /**
     * http object with information about an outgoing HTTP call.
     */
-  http: Option[SubsegmentHttp],
+  http: Option[DownstreamHttp],
   /**
     * aws object with information about the downstream AWS resource that your application called.
     */
-  aws: SubsegmentAws,
+  aws: Option[SubsegmentAws],
   /**
     * queries that your application makes to an SQL database.
     */
-  sql: Sql
+  sql: Option[Sql]
 )
 
 /**

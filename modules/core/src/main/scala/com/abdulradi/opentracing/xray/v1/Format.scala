@@ -16,11 +16,11 @@ object Format {
     ("x_forwarded_for" -> segmentRequest.xForwardedFor.asJson) +: segmentRequest.commonFields.asJsonObject
   }
   implicit val responseEncoder: ObjectEncoder[Response] = Encoder.forProduct2("status", "content_length")(res => (res.status, res.contentLength))
-  implicit val segmentHttpEncoder: ObjectEncoder[SegmentHttp] = ObjectEncoder.instance(obj => JsonObject(
+  implicit val segmentHttpEncoder: ObjectEncoder[ServedHttp] = ObjectEncoder.instance(obj => JsonObject(
     "request" -> obj.request.asJson,
     "response" -> obj.response.asJson
   ))
-  implicit val subSegmentHttpEncoder: ObjectEncoder[SubsegmentHttp] = ObjectEncoder.instance(obj => JsonObject(
+  implicit val subSegmentHttpEncoder: ObjectEncoder[DownstreamHttp] = ObjectEncoder.instance(obj => JsonObject(
     "request" -> obj.request.asJson,
     "response" -> obj.response.asJson
   ))
@@ -156,8 +156,6 @@ object Format {
       ("name" -> obj.name.asJson) +:
       ("start_time" -> obj.startTime.asJson) +:
       ("end_time" -> obj.endTime.asJson) +:
-      ("http" -> obj.http.asJson) +:
-      ("aws" -> obj.aws.asJson) +:
       ("annotations" -> obj.annotations.asJson) +:
       ("metadata" -> obj.metadata.asJson) +:
       ("subsegments" -> obj.subsegments.asJson) +: obj.errorFields.map(_.asJsonObject).getOrElse(JsonObject.empty)
@@ -183,6 +181,8 @@ object Format {
       ("user" -> segment.user.asJson) +:
       ("origin" -> segment.origin.asJson) +:
       ("parent_id" -> segment.parentId.asJson) +:
+      ("http" -> segment.http.asJson) +:
+      ("aws" -> segment.aws.asJson) +:
       segment.topLevelFields.asJsonObject
   )
 

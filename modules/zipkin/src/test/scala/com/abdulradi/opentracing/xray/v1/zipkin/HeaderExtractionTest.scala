@@ -10,8 +10,9 @@ import io.opentracing.propagation.{Format, TextMapExtractAdapter, TextMapInjectA
 import org.scalatest._
 
 class HeaderExtractionTest extends FunSuite {
-  val alwaysSampleTracer = TracerBuilder("", "", 0, Sampler.ALWAYS_SAMPLE).build()
-  val neverSampleTracer = TracerBuilder("", "", 0, Sampler.NEVER_SAMPLE).build()
+  val converter = ZipkinSpanConverter.extractTopLevelTrace()((_, segmentExtractor) => segmentExtractor)
+  val alwaysSampleTracer = TracerBuilder("", "", 0, Sampler.ALWAYS_SAMPLE, converter).build()
+  val neverSampleTracer = TracerBuilder("", "", 0, Sampler.NEVER_SAMPLE, converter).build()
 
   def headers(pairs: (String, String)*) =
     new TextMapExtractAdapter(pairs.toMap.asJava)

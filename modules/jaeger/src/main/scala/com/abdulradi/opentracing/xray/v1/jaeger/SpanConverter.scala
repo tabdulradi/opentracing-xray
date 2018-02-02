@@ -37,13 +37,13 @@ private[jaeger] object SpanConverter extends (Span => Either[String, TopLevelTra
     startTime: Double = span.getStart.toDouble / 1000000 // microseconds to seconds
     endTime: Option[Double] = Option(span.getDuration).filterNot(_ == 0).map(_ + span.getStart).map(_.toDouble / 1000000)
 
-//    error: Boolean = None // TODO indicating that a client error occurred (response status code was 4XX Client Error)
-//    throttle: Boolean = None // TODO indicating that a request was throttled (response status code was 429 Too Many Requests).
-//    fault: Boolean = None // TODO indicating that a server error occurred (response status code was 5XX Server Error).
-//    cause: Cause = None // TODO Indicate the cause of the error
+    //    error: Boolean = None // TODO indicating that a client error occurred (response status code was 4XX Client Error)
+    //    throttle: Boolean = None // TODO indicating that a request was throttled (response status code was 429 Too Many Requests).
+    //    fault: Boolean = None // TODO indicating that a server error occurred (response status code was 5XX Server Error).
+    //    cause: Cause = None // TODO Indicate the cause of the error
     errorFields = None // TODO Some(CommonErrorFields(error, throttle, fault, cause))
 
-    http: Option[SegmentHttp] = None // TODO information about the original HTTP request.
+    http: Option[ServedHttp] = None // TODO information about the original HTTP request.
     aws: Option[SegmentAws] = None // TODO information about the AWS resource on which your application served the request
 
     annotations: Map[AnnotationKey, AnnotationValue] =
@@ -71,7 +71,7 @@ private[jaeger] object SpanConverter extends (Span => Either[String, TopLevelTra
 //    span.getReferences
   } yield Segment(
     TopLevelFields(
-      CommonFields(id, name, startTime, endTime, http, aws, errorFields, annotations, metadata, subsegments),
+      CommonFields(id, name, startTime, endTime, errorFields, annotations, metadata, subsegments),
       traceId
-    ), service, user, origin, parentId)
+    ), service, user, origin, parentId, http, aws)
 }
