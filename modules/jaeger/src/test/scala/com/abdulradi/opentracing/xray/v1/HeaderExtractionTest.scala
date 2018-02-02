@@ -30,12 +30,12 @@ class HeaderExtractionTest extends FunSuite {
     assert(context.getTraceId === 0) // Dummy traceId, since XRay's won't fit a Long
     assert(header.parentSegmentId === None)
     assert(context.getFlags === flagSampled)
-    assert(header.samplingDecision === Some(1))
+    assert(header.samplingDecision === Some(true))
 
     val context2 = nonSamplerCodec.extract(headers())
     val header2 = TracingHeader.fromSpanContext(context2).right.get
     assert(context2.getFlags === flagNotSampled)
-    assert(header2.samplingDecision === Some(0))
+    assert(header2.samplingDecision === Some(false))
   }
 
   test("No tracing header (non relevant headers) shouldn't affect extraction") {
@@ -44,7 +44,7 @@ class HeaderExtractionTest extends FunSuite {
     assert(context.getTraceId === 0) // Dummy traceId, since XRay's won't fit a Long
     assert(header.parentSegmentId === None)
     assert(context.getFlags === flagSampled)
-    assert(header.samplingDecision === Some(1))
+    assert(header.samplingDecision === Some(true))
   }
 
   test("Root is the minimum, sampler decides whether to sample or not") {
@@ -54,12 +54,12 @@ class HeaderExtractionTest extends FunSuite {
     assert(header.rootTraceId.originalRequestTime.value === "5a5cd12f")
     assert(header.rootTraceId.identifier.value === "f08cdaba788bc0a0f88f72e6")
     assert(header.parentSegmentId === None)
-    assert(header.samplingDecision === Some(1))
+    assert(header.samplingDecision === Some(true))
 
     val context2 = nonSamplerCodec.extract(traceHeader("Root=1-5a5cd12f-f08cdaba788bc0a0f88f72e6"))
     val header2 = TracingHeader.fromSpanContext(context2).right.get
     assert(context2.getFlags === flagNotSampled)
-    assert(header2.samplingDecision === Some(0))
+    assert(header2.samplingDecision === Some(false))
   }
 
   test("Lower case tracing header is still valid") {
@@ -72,13 +72,13 @@ class HeaderExtractionTest extends FunSuite {
   test("Sampled should be obeyed") {
     val context1 = codecNoSampler.extract(traceHeader("Root=1-5759e988-bd862e3fe1be46a994272793;Sampled=1"))
     val header1 = TracingHeader.fromSpanContext(context1).right.get
-    assert(header1.samplingDecision === Some(1))
+    assert(header1.samplingDecision === Some(true))
     assert(header1.rootTraceId.originalRequestTime.value === "5759e988")
     assert(header1.rootTraceId.identifier.value === "bd862e3fe1be46a994272793")
 
     val context2 = codecNoSampler.extract(traceHeader("Root=1-5759e988-bd862e3fe1be46a994272793;Sampled=0"))
     val header2 = TracingHeader.fromSpanContext(context2).right.get
-    assert(header2.samplingDecision === Some(0))
+    assert(header2.samplingDecision === Some(false))
     assert(header2.rootTraceId.originalRequestTime.value === "5759e988")
     assert(header2.rootTraceId.identifier.value === "bd862e3fe1be46a994272793")
   }
@@ -87,7 +87,7 @@ class HeaderExtractionTest extends FunSuite {
     val context = codec.extract(traceHeader("Root=1-5a5cd12f-f08cdaba788bc0a0f88f72e6;Parent=6a3dc251f20785d7"))
     val header = TracingHeader.fromSpanContext(context).right.get
     assert(header.parentSegmentId.get.value === "6a3dc251f20785d7")
-    assert(header.samplingDecision === Some(1)) // Test codec always samples if no Sampled header
+    assert(header.samplingDecision === Some(true)) // Test codec always samples if no Sampled header
     assert(header.rootTraceId.originalRequestTime.value === "5a5cd12f")
     assert(header.rootTraceId.identifier.value === "f08cdaba788bc0a0f88f72e6")
   }
@@ -96,7 +96,7 @@ class HeaderExtractionTest extends FunSuite {
     val context = codecNoSampler.extract(traceHeader("Root=1-5a5cd12f-f08cdaba788bc0a0f88f72e6;Parent=6a3dc251f20785d7;Sampled=1"))
     val header = TracingHeader.fromSpanContext(context).right.get
     assert(header.parentSegmentId.get.value === "6a3dc251f20785d7")
-    assert(header.samplingDecision === Some(1))
+    assert(header.samplingDecision === Some(true))
     assert(header.rootTraceId.originalRequestTime.value === "5a5cd12f")
     assert(header.rootTraceId.identifier.value === "f08cdaba788bc0a0f88f72e6")
   }
@@ -105,7 +105,7 @@ class HeaderExtractionTest extends FunSuite {
     val context = codecNoSampler.extract(traceHeader("Root=1-5a5cd12f-f08cdaba788bc0a0f88f72e6;Parent=6a3dc251f20785d7;Sampled=0"))
     val header = TracingHeader.fromSpanContext(context).right.get
     assert(header.parentSegmentId.get.value === "6a3dc251f20785d7")
-    assert(header.samplingDecision === Some(0))
+    assert(header.samplingDecision === Some(false))
     assert(header.rootTraceId.originalRequestTime.value === "5a5cd12f")
     assert(header.rootTraceId.identifier.value === "f08cdaba788bc0a0f88f72e6")
   }
@@ -115,7 +115,7 @@ class HeaderExtractionTest extends FunSuite {
     val header = TracingHeader.fromSpanContext(context).right.get
     assert(context.getTraceId === 0) // Dummy traceId, since XRay's won't fit a Long
     assert(header.parentSegmentId.get.value === "6a3dc251f20785d7")
-    assert(header.samplingDecision === Some(1))
+    assert(header.samplingDecision === Some(true))
     assert(header.rootTraceId.originalRequestTime.value === "5a5cd12f")
     assert(header.rootTraceId.identifier.value === "f08cdaba788bc0a0f88f72e6")
   }
@@ -125,7 +125,7 @@ class HeaderExtractionTest extends FunSuite {
     val header = TracingHeader.fromSpanContext(context).right.get
     assert(context.getTraceId === 0) // Dummy traceId, since XRay's won't fit a Long
     assert(header.parentSegmentId.get.value === "6a3dc251f20785d7")
-    assert(header.samplingDecision === Some(1))
+    assert(header.samplingDecision === Some(true))
     assert(header.rootTraceId.originalRequestTime.value === "5a5cd12f")
     assert(header.rootTraceId.identifier.value === "f08cdaba788bc0a0f88f72e6")
   }
